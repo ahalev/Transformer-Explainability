@@ -1,18 +1,17 @@
-import os
-from tqdm import tqdm
-import h5py
-
 import argparse
+import os
 
-# Import saliency methods and models
-from misc_functions import *
+import h5py
+import torch.cuda
+from torchvision.datasets import ImageNet
+from tqdm import tqdm
 
+from ViT_LRP import vit_base_patch16_224 as vit_LRP
 from ViT_explanation_generator import Baselines, LRP
 from ViT_new import vit_base_patch16_224
-from ViT_LRP import vit_base_patch16_224 as vit_LRP
 from ViT_orig_LRP import vit_base_patch16_224 as vit_orig_LRP
-
-from torchvision.datasets import ImageNet
+# Import saliency methods and models
+from misc_functions import *
 
 
 def normalize(tensor,
@@ -27,21 +26,32 @@ def normalize(tensor,
 def compute_saliency_and_save(args):
     first = True
     with h5py.File(os.path.join(args.method_dir, 'results.hdf5'), 'a') as f:
-        data_cam = f.create_dataset('vis',
-                                    (1, 1, 224, 224),
-                                    maxshape=(None, 1, 224, 224),
-                                    dtype=np.float32,
-                                    compression="gzip")
-        data_image = f.create_dataset('image',
-                                      (1, 3, 224, 224),
-                                      maxshape=(None, 3, 224, 224),
-                                      dtype=np.float32,
-                                      compression="gzip")
-        data_target = f.create_dataset('target',
-                                       (1,),
-                                       maxshape=(None,),
-                                       dtype=np.int32,
-                                       compression="gzip")
+
+        try:
+            data_cam = f['vis']
+        except KeyError:
+            data_cam = f.create_dataset('vis',
+                                        (1, 1, 224, 224),
+                                        maxshape=(None, 1, 224, 224),
+                                        dtype=np.float32,
+                                        compression="gzip")
+        try:
+            data_image = f['image']
+        except KeyError:
+            data_image = f.create_dataset('image',
+                                          (1, 3, 224, 224),
+                                          maxshape=(None, 3, 224, 224),
+                                          dtype=np.float32,
+                                          compression="gzip")
+        try:
+            data_target = f['target']
+        except KeyError:
+            data_target = f.create_dataset('target',
+                                           (1,),
+                                           maxshape=(None,),
+                                           dtype=np.int32,
+                                           compression="gzip")
+
         for batch_idx, (data, target) in enumerate(tqdm(sample_loader)):
             if first:
                 first = False
@@ -103,6 +113,10 @@ def compute_saliency_and_save(args):
 
 
 if __name__ == "__main__":
+    from rgen.model.model_utils import determine_device
+
+    torch.cuda.set_device(determine_device('infer').index)
+
     parser = argparse.ArgumentParser(description='Train a segmentation')
     parser.add_argument('--batch-size', type=int,
                         default=1,
@@ -197,12 +211,12 @@ if __name__ == "__main__":
         transforms.ToTensor(),
     ])
 
-    imagenet_ds = ImageNet(args.imagenet_validation_path, split='val', download=False, transform=transform)
+    imagenet_ds = ImageNet(args.imagenet_validation_path, split='val', transform=transform)
     sample_loader = torch.utils.data.DataLoader(
         imagenet_ds,
         batch_size=args.batch_size,
         shuffle=False,
-        num_workers=4
+        num_workers=0
     )
 
     compute_saliency_and_save(args)
