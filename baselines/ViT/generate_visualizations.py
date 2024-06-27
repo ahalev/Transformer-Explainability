@@ -6,12 +6,12 @@ import torch.cuda
 from torchvision.datasets import ImageNet
 from tqdm import tqdm
 
-from ViT_LRP import vit_base_patch16_224 as vit_LRP
-from ViT_explanation_generator import Baselines, LRP
-from ViT_new import vit_base_patch16_224
-from ViT_orig_LRP import vit_base_patch16_224 as vit_orig_LRP
+from .ViT_LRP import vit_base_patch16_224 as vit_LRP
+from .ViT_explanation_generator import Baselines, LRP
+from .ViT_new import vit_base_patch16_224
+from .ViT_orig_LRP import vit_base_patch16_224 as vit_orig_LRP
 # Import saliency methods and models
-from misc_functions import *
+from .misc_functions import *
 
 
 def normalize(tensor,
