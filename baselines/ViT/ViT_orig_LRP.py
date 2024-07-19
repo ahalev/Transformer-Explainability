@@ -4,11 +4,11 @@ Hacked together by / Copyright 2020 Ross Wightman
 import torch
 import torch.nn as nn
 from einops import rearrange
-from lib.trans_lrp.modules.layers_lrp import *
+from ...modules.layers_lrp import *
 
-from lib.trans_lrp.baselines.ViT.helpers import load_pretrained
-from lib.trans_lrp.baselines.ViT.weight_init import trunc_normal_
-from lib.trans_lrp.baselines.ViT.layer_helpers import to_2tuple
+from .helpers import load_pretrained
+from .weight_init import trunc_normal_
+from .layer_helpers import to_2tuple
 
 
 def _cfg(url='', **kwargs):
