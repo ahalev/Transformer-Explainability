@@ -25,19 +25,24 @@ class LRP:
     def generate_LRP(self, input, index=None, method="transformer_attribution", is_ablation=False, start_layer=0):
         output = self.model(input)
         kwargs = {"alpha": 1}
-        if index == None:
+
+        if index is None:
             index = np.argmax(output.cpu().data.numpy(), axis=-1)
 
-        one_hot = np.zeros((1, output.size()[-1]), dtype=np.float32)
-        one_hot[0, index] = 1
-        one_hot_vector = one_hot
-        one_hot = torch.from_numpy(one_hot).requires_grad_(True)
-        one_hot = torch.sum(one_hot.to(output.device) * output)
+        one_hot = torch.nn.functional.one_hot(torch.tensor([index]), num_classes=output.shape[-1])
+        one_hot = one_hot.to(device=input.device, dtype=torch.float32)
+        one_hot.requires_grad_(True)
+
+        # one_hot = np.zeros((1, output.size()[-1]), dtype=np.float32)
+        # one_hot[0, index] = 1
+        # one_hot_vector = one_hot
+        # one_hot = torch.from_numpy(one_hot).requires_grad_(True)
+        dot_prod = torch.sum(one_hot.to(output.device) * output)
 
         self.model.zero_grad()
-        one_hot.backward(retain_graph=True)
+        dot_prod.backward(retain_graph=True)
 
-        return self.model.relprop(torch.tensor(one_hot_vector).to(input.device), method=method, is_ablation=is_ablation,
+        return self.model.relprop(torch.tensor(one_hot).to(input.device), method=method, is_ablation=is_ablation,
                                   start_layer=start_layer, **kwargs)
 
 
