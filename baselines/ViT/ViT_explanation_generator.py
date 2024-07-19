@@ -38,7 +38,7 @@ class LRP:
         # one_hot[0, index] = 1
         # one_hot_vector = one_hot
         # one_hot = torch.from_numpy(one_hot).requires_grad_(True)
-        dot_prod = torch.sum(one_hot.to(output.device) * output)
+        dot_prod = torch.sum(one_hot * output)
 
         self.model.zero_grad()
         dot_prod.backward(retain_graph=True)
@@ -65,7 +65,7 @@ class Baselines:
 
         one_hot = one_hot_index(index, input.device, output.shape[-1])
 
-        dot_prod = torch.sum(one_hot.cuda() * output)
+        dot_prod = torch.sum(one_hot * output)
 
         self.model.zero_grad()
         dot_prod.backward(retain_graph=True)
