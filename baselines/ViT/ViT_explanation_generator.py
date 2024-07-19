@@ -27,11 +27,12 @@ class LRP:
         kwargs = {"alpha": 1}
 
         if index is None:
-            index = np.argmax(output.cpu().data.numpy(), axis=-1)
+            index = output.detach().argmax().item()
 
-        one_hot = torch.nn.functional.one_hot(torch.tensor([index]), num_classes=output.shape[-1])
-        one_hot = one_hot.to(device=input.device, dtype=torch.float32)
-        one_hot.requires_grad_(True)
+        # one_hot = torch.nn.functional.one_hot(torch.tensor([index]), num_classes=output.shape[-1])
+        # one_hot = one_hot.to(device=input.device, dtype=torch.float32)
+        # one_hot.requires_grad_(True)
+        one_hot = one_hot_index(index, input.device, output.shape[-1])
 
         # one_hot = np.zeros((1, output.size()[-1]), dtype=np.float32)
         # one_hot[0, index] = 1
@@ -53,17 +54,21 @@ class Baselines:
         self.model.eval()
 
     def generate_cam_attn(self, input, index=None):
-        output = self.model(input.cuda(), register_hook=True)
-        if index == None:
-            index = np.argmax(output.cpu().data.numpy())
+        output = self.model(input, register_hook=True)
 
-        one_hot = np.zeros((1, output.size()[-1]), dtype=np.float32)
-        one_hot[0][index] = 1
-        one_hot = torch.from_numpy(one_hot).requires_grad_(True)
-        one_hot = torch.sum(one_hot.cuda() * output)
+        if index is None:
+            index = output.detach().argmax().item()
+
+        # one_hot = np.zeros((1, output.size()[-1]), dtype=np.float32)
+        # one_hot[0][index] = 1
+        # one_hot = torch.from_numpy(one_hot).requires_grad_(True)
+
+        one_hot = one_hot_index(index, input.device, output.shape[-1])
+
+        dot_prod = torch.sum(one_hot.cuda() * output)
 
         self.model.zero_grad()
-        one_hot.backward(retain_graph=True)
+        dot_prod.backward(retain_graph=True)
         #################### attn
         grad = self.model.blocks[-1].attn.get_attn_gradients()
         cam = self.model.blocks[-1].attn.get_attention_map()
@@ -86,3 +91,10 @@ class Baselines:
             all_layer_attentions.append(avg_heads)
         rollout = compute_rollout_attention(all_layer_attentions, start_layer=start_layer)
         return rollout[:,0, 1:]
+
+
+def one_hot_index(index, device, num_classes):
+    one_hot = torch.nn.functional.one_hot(torch.tensor([index]), num_classes=num_classes)
+    one_hot = one_hot.to(device=device, dtype=torch.float32)
+    one_hot.requires_grad_(True)
+    return one_hot
